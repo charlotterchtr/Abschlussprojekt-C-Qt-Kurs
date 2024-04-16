@@ -16,6 +16,7 @@
 #include <QDropEvent>
 #include <QMimeData>
 
+#include "Playlist.h"
 #include "Control.h"
 
 class MusicPlayer : public QWidget
@@ -34,10 +35,12 @@ class MusicPlayer : public QWidget
     int * CurrentIndex;
     QPushButton * ViewPlaylist;
     QListWidget * playlistWidget;
-    void handleViewPlaylist(bool checked);
 
-    void handleItemMoved(QDropEvent *event);
-    void dropEvent(QDropEvent *event) override;
+    PlaylistDialog * playlistDialog;
+    void handleViewPlaylist();
+    void handlePlaylistUpdated();
+    //void handleItemMoved(QDropEvent *event);
+    //void dropEvent(QDropEvent *event) override;
 
     QSlider * slider;
     QLabel * duration;
@@ -79,6 +82,7 @@ signals:
     void CurrentIndexChanged();
     void FirstSongAdded();
     void SongsAdded();
+    void playlistUpdated();
 
 public:
     MusicPlayer(QWidget *parent = nullptr);

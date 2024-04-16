@@ -79,20 +79,21 @@ MusicPlayer::MusicPlayer(QWidget *parent)
     controlLayout->addStretch(1);
 
     ViewPlaylist = new QPushButton(tr("View Playlist"), this);
-    ViewPlaylist->setCheckable(true);
     controlLayout->addWidget(ViewPlaylist);
     connect(ViewPlaylist, &QPushButton::clicked, this, &MusicPlayer::handleViewPlaylist);
+    connect(this, &MusicPlayer::playlistUpdated, this, &MusicPlayer::handlePlaylistUpdated);
 
-    playlistWidget = new QListWidget(this);
-    playlistWidget->setDragDropMode(QAbstractItemView::InternalMove);
-    playlistWidget->setAcceptDrops(true);
+    //playlistWidget = new QListWidget(this);
+    //playlistWidget->setDragDropMode(QAbstractItemView::InternalMove);
+    //playlistWidget->setAcceptDrops(true);
     connect(this, &MusicPlayer::SongsAdded, this, &MusicPlayer::updatePlaylist);
+    connect(this, &MusicPlayer::FirstSongAdded, this, &MusicPlayer::updatePlaylist);
 
     //compose layout
     layout->addLayout(trackLayout);
     layout->addLayout(durationLayout);
     layout->addLayout(controlLayout);
-    layout->addWidget(playlistWidget);
+    //layout->addWidget(playlistWidget);
 
     this->setLayout(layout);
 }
@@ -103,16 +104,7 @@ void MusicPlayer::startPlayer(){
     if (!playlist->isEmpty()) {
         Player->setSource(playlist->at(0).first);
         *CurrentIndex = playlist->at(0).second;
-
-        /*
-        if (Player->mediaStatus == QMediaPlayer::LoadedMedia){
-
-        QVariant title = Player->metaData(QMediaMetaData::Title);
-        QVariant artist = Player->metaData(QMediaMetaData::AlbumArtist);
-*/
-        titleLabel->setText("First title");
-        authorLabel->setText("first author");
-
+        emit CurrentIndexChanged();
     }
 }
 
@@ -145,20 +137,6 @@ void MusicPlayer::open(){
 
 };
 
-    // Output the list of QUrls
-    /*
-    qDebug() << "List of MP3 URLs:";
-    for(const QUrl &url : *playlist) {
-        qDebug() << url.toString();
-    }
-
-
-    if (!playlist->isEmpty()) {
-        titleLabel->setText("First Track Title");
-        authorLabel->setText("First Track Author");
-    }
-};
-*/
 void MusicPlayer::durationChanged(qint64 new_duration){
     c_duration = new_duration / 1000;
     slider->setMaximum(c_duration);
@@ -190,21 +168,57 @@ void MusicPlayer::updateDurationInfo(qint64 currentInfo)
         tStr = currentTime.toString(format) + " / " + totalTime.toString(format);
     }
     duration->setText(tStr);
+};
+
+void MusicPlayer::handleViewPlaylist(){
+    if (!playlistDialog){
+        playlistDialog = new PlaylistDialog(this);
+        playlistDialog->getPlaylist(playlist);
+        playlistDialog->show();
+    }
+    else{
+        playlistDialog->raise();
+    }
+}
+
+void MusicPlayer::updatePlaylist(){         //save code!
+    emit playlistUpdated();
+};
+
+void MusicPlayer::handlePlaylistUpdated(){
+    if (playlistDialog){
+        delete playlistDialog;                      //memory leak???
+        playlistDialog = new PlaylistDialog(this);
+        playlistDialog->getPlaylist(playlist);
+        playlistDialog->show();
+    }
 }
 
 void MusicPlayer::metaDataChanged(){
     if (Player->mediaStatus() == QMediaPlayer::LoadedMedia || Player->mediaStatus() == QMediaPlayer::PlayingState) {
         auto data = Player->metaData();
-        QString realTitle = data.stringValue(data.Title);
-        QString realArtist = data.stringValue(data.AlbumArtist);
-        titleLabel->setText(realTitle);
-        authorLabel->setText(realArtist);
+        QString Title = data.stringValue(data.Title);
+        QString Artist = data.stringValue(data.AlbumArtist);
+
+        if (Title == ""){                           //fix!
+            titleLabel->setText("Unknown Title");
+        } else{
+            titleLabel->setText(Title);
+        }
+
+        if (Artist == ""){
+            authorLabel->setText("Unknown Artist");
+        } else{
+            authorLabel->setText(Artist);
+        }
+
     }
     else{
         titleLabel->setText("Title not loaded");
         authorLabel->setText("Artist not loaded");
     }
 };
+
 void MusicPlayer::tracksChanged(){
 
 };
@@ -215,13 +229,11 @@ void MusicPlayer::nextClicked(){
             (*CurrentIndex)++;
             Player->setSource(playlist->at(*CurrentIndex).first);
             emit CurrentIndexChanged();
-            //Player->play();
         }
         else{
             *CurrentIndex = 0;
             Player->setSource(playlist->at(*CurrentIndex).first);
             emit CurrentIndexChanged();
-            //Player->play();
         }
     }
 };
@@ -232,13 +244,11 @@ void MusicPlayer::previousClicked(){
             (*CurrentIndex)--;
             Player->setSource(playlist->at(*CurrentIndex).first);
             emit CurrentIndexChanged();
-            //Player->play();
         }
         else{
             *CurrentIndex =  (playlist->size() -1);
             Player->setSource(playlist->at(*CurrentIndex).first);
             emit CurrentIndexChanged();
-            //Player->play();
         }
     }
 
@@ -260,85 +270,6 @@ void MusicPlayer::seek(int position){
     Player->setPosition(newPosition);
 };
 
-void MusicPlayer::handleViewPlaylist(bool checked){
-
-    if(checked){
-        playlistWidget->setVisible(true);
-        if (playlistWidget->count() == 0){
-            if (!playlist->isEmpty()) {
-                for (const QPair<QUrl, int>& song : *playlist) {
-                    QString fileName = song.first.fileName(); // Get the file name
-                    QListWidgetItem* item = new QListWidgetItem(fileName); // Create a new item with the file name
-                    playlistWidget->addItem(item); // Add the item to the playlistWidget
-                }
-            }
-            else{
-                QString text = "No Song in Playlist. Please add a song";
-                QListWidgetItem* item = new QListWidgetItem(text); // Create a new item with the file name
-                playlistWidget->addItem(item); // Add the item to the playlistWidget
-            }
-        }
-    }
-    else{
-        playlistWidget->setVisible(false);
-        }
-};
-
-void MusicPlayer::updatePlaylist(){
-    playlistWidget->clear();
-        if (!playlist->isEmpty()) {
-            for (const QPair<QUrl, int>& song : *playlist) {
-                QString fileName = song.first.fileName(); // Get the file name
-                QListWidgetItem* item = new QListWidgetItem(fileName); // Create a new item with the file name
-                playlistWidget->addItem(item); // Add the item to the playlistWidget
-            }
-        } else {
-            QString text = "No Song in Playlist. Please add a song";
-            QListWidgetItem* item = new QListWidgetItem(text); // Create a new item with the file name
-            playlistWidget->addItem(item); // Add the item to the playlistWidget
-        }
-};
-
-void MusicPlayer::dropEvent(QDropEvent *event){
-    const QMimeData *mimeData = event->mimeData();
-    if (mimeData->hasUrls()) {
-        // Extract the dropped items
-        QList<QUrl> urls = mimeData->urls();
-
-        // Extract file names from dropped URLs
-        QStringList fileNames;
-        for (const QUrl &url : urls) {
-            fileNames << url.toLocalFile();
-        }
-
-        // Calculate the new index where the items were dropped
-        int newIndex = playlistWidget->indexAt(event->position().toPoint()).row();
-
-        // Update the order of the playlist
-        QList<QPair<QUrl, int>> newPlaylist;
-        for (int i = 0; i < playlist->size(); ++i) {
-            if (i == newIndex) {
-                // Insert the dropped items at the new index
-                for (const QString &fileName : fileNames) {
-                    newPlaylist.append(qMakePair(QUrl::fromLocalFile(fileName), i));
-                }
-            }
-            if (!fileNames.contains(playlist->at(i).first.toLocalFile())) {
-                newPlaylist.append(playlist->at(i));
-            }
-        }
-        *playlist = newPlaylist;
-
-        // Update CurrentIndex if the currently playing song was moved
-        for (int i = 0; i < playlist->size(); ++i) {
-            if (playlist->at(i).second == *CurrentIndex) {
-                *CurrentIndex = i;
-                break;
-            }
-        }
-    }
-    event->acceptProposedAction();
-};
 
 
 void MusicPlayer::statusChanged(QMediaPlayer::MediaStatus status){

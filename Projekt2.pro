@@ -12,11 +12,13 @@ CONFIG += c++17
 SOURCES += \
     Control.cpp \
     Player.cpp \
+    Playlist.cpp \
     main.cpp
 
 HEADERS += \
     Control.h \
-    Player.h
+    Player.h \
+    Playlist.h
 
 # Default rules for deployment.
 qnx: target.path = /tmp/$${TARGET}/bin
