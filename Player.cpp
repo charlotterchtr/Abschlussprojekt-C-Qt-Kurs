@@ -39,24 +39,25 @@ MusicPlayer::MusicPlayer(QWidget *parent)
     connect(Player, &QMediaPlayer::durationChanged, this, &MusicPlayer::durationChanged);
     connect(Player, &QMediaPlayer::positionChanged, this, &MusicPlayer::positionChanged);
 
-    //connect(Player, QOverload<>::of(&QMediaPlayer::metaDataChanged), this, &MusicPlayer::metaDataChanged);
-    connect(Player, &QMediaPlayer::mediaStatusChanged, this, &MusicPlayer::statusChanged);
     connect(this, &MusicPlayer::FirstSongAdded, this, &MusicPlayer::startPlayer);
-    connect(this, &MusicPlayer::CurrentIndexChanged, this, &MusicPlayer::metaDataChanged);
+    connect(Player, &QMediaPlayer::mediaStatusChanged, this, &MusicPlayer::handleStateChanged);
+    connect(Player, &QMediaPlayer::mediaStatusChanged, this, &MusicPlayer::handleCursor);
+    connect(this, &MusicPlayer::mediaLoaded, this, &MusicPlayer::metaDataChanged);
 
     connect(Player, &QMediaPlayer::bufferProgressChanged, this, &MusicPlayer::bufferingProgress);
     connect(Player, &QMediaPlayer::errorChanged, this, &MusicPlayer::displayErrorMessage);
-    connect(Player, &QMediaPlayer::tracksChanged, this, &MusicPlayer::tracksChanged);
 
 
     // add controls
     controlLayout = new QHBoxLayout;
     controlLayout->setContentsMargins(0, 0, 0, 0);
 
-    QPushButton *openButton = new QPushButton(tr("Open"), this);
+    openButton = new QPushButton(tr("Open"), this);
     connect(openButton, &QPushButton::clicked, this, &MusicPlayer::open);
     controlLayout->addWidget(openButton);
     controlLayout->addStretch(1);
+    deleteButton = new QPushButton(("Delete"), this);
+    connect(deleteButton, &QPushButton::clicked, this, &MusicPlayer::deleteSong);
 
     PlayerControl = new Controls();
     PlayerControl->setState(Player->playbackState());
@@ -81,13 +82,16 @@ MusicPlayer::MusicPlayer(QWidget *parent)
     ViewPlaylist = new QPushButton(tr("View Playlist"), this);
     controlLayout->addWidget(ViewPlaylist);
     connect(ViewPlaylist, &QPushButton::clicked, this, &MusicPlayer::handleViewPlaylist);
-    connect(this, &MusicPlayer::playlistUpdated, this, &MusicPlayer::handlePlaylistUpdated);
+    //connect(this, &MusicPlayer::playlistUpdated, this, &MusicPlayer::handlePlaylistUpdated);
 
     //playlistWidget = new QListWidget(this);
     //playlistWidget->setDragDropMode(QAbstractItemView::InternalMove);
     //playlistWidget->setAcceptDrops(true);
-    connect(this, &MusicPlayer::SongsAdded, this, &MusicPlayer::updatePlaylist);
-    connect(this, &MusicPlayer::FirstSongAdded, this, &MusicPlayer::updatePlaylist);
+    connect(this, &MusicPlayer::SongsAdded, this, &MusicPlayer::handlePlaylistUpdated);
+    connect(this, &MusicPlayer::FirstSongAdded, this, &MusicPlayer::handlePlaylistUpdated);
+    connect(this, &MusicPlayer::PlaylistChanged, this, &MusicPlayer::handlePlaylistUpdated);
+
+    connect(this, &MusicPlayer::deleteItemsSelected, this, &MusicPlayer::handleDelete);
 
     //compose layout
     layout->addLayout(trackLayout);
@@ -137,6 +141,93 @@ void MusicPlayer::open(){
 
 };
 
+void MusicPlayer::deleteSong() {
+
+      // Check if the playlist is empty
+      if (playlist->isEmpty()) {
+                               QMessageBox::information(this, "Playlist is Empty", "The playlist is currently empty.");
+    return;
+    }
+
+    if (!playlistDialog) {
+        playlistDialog = new PlaylistDialog(this);
+        playlistDialog->getPlaylist(playlist);
+        playlistDialog->show();
+    }
+    QList<QListWidgetItem *> selectedItems = playlistDialog->playlistWidget->selectedItems();
+
+    // Create a message box to prompt the user for confirmation
+    QMessageBox::StandardButton reply;
+    reply = QMessageBox::question(this, "Delete Songs", "Are you sure you want to delete the selected songs from the playlist?",
+                                  QMessageBox::Yes | QMessageBox::No);
+
+    // If the user confirms deletion, proceed to delete the selected songs
+    if (reply == QMessageBox::Yes) {
+
+    for (QListWidgetItem *item : selectedItems) {
+        // Find the index of the selected item in the playlist
+        int index = playlistWidget->row(item);
+
+        // Remove the song from the playlist
+        playlist->removeAt(index);
+        // Delete the item from the playlist widget
+        delete playlistWidget->takeItem(index);
+    }
+
+    // Notify that the playlist has been updated
+    emit PlaylistChanged();
+    }
+
+
+
+
+    // Check if the playlist is empty
+    /*
+    if (playlist->isEmpty()) {
+        QMessageBox::information(this, "Playlist is Empty", "The playlist is currently empty.");
+        return;
+    }
+
+    // If the user confirms deletion, proceed to delete the selected songs
+    if (!playlistDialog) {
+        playlistDialog = new PlaylistDialog(this);
+    }
+
+        QList<QListWidgetItem *> selectedItems = playlistDialog->playlistWidget->selectedItems();
+
+    emit deleteItemsSelected(selectedItems);
+        PlaylistDialog->close;
+    /*
+        for (QListWidgetItem *item : selectedItems) {
+            // Find the index of the selected item in the playlist
+            int index = playlistDialog->playlistWidget->row(item);
+
+                    // Remove the song from the playlist
+                    playlist->removeAt(index);
+                    // Delete the item from the playlist widget
+                    delete playlistDialog->playlistWidget->takeItem(index);
+
+        }
+        //playlistDialog->close();
+        // Notify that the playlist has been updated
+        emit PlaylistChanged();
+    */
+};
+
+void MusicPlayer::handleDelete(QList<QListWidgetItem *> selectedItems){
+    for (QListWidgetItem *item : selectedItems) {
+        // Find the index of the selected item in the playlist
+        int index = playlistDialog->playlistWidget->row(item);
+        // Remove the song from the playlist
+        playlist->removeAt(index);
+        // Delete the item from the playlist widget
+        delete playlistDialog->playlistWidget->takeItem(index);
+    }
+    //delete PlaylistDialog;
+    //PlaylistDialog = nullptr;
+
+}
+
 void MusicPlayer::durationChanged(qint64 new_duration){
     c_duration = new_duration / 1000;
     slider->setMaximum(c_duration);
@@ -174,52 +265,80 @@ void MusicPlayer::handleViewPlaylist(){
     if (!playlistDialog){
         playlistDialog = new PlaylistDialog(this);
         playlistDialog->getPlaylist(playlist);
+        playlistDialog->getCurrentIndex(CurrentIndex);
         playlistDialog->show();
+        connect(playlistDialog, &PlaylistDialog::finished, this, &MusicPlayer::cleanupPlaylistDialog);
     }
     else{
         playlistDialog->raise();
     }
 }
 
-void MusicPlayer::updatePlaylist(){         //save code!
-    emit playlistUpdated();
-};
+void MusicPlayer::cleanupPlaylistDialog() {
+    if (playlistDialog) {
+        playlistDialog->deleteLater();
+        playlistDialog = nullptr;
+    }
+}
 
 void MusicPlayer::handlePlaylistUpdated(){
+    cleanupPlaylistDialog();
+
     if (playlistDialog){
-        delete playlistDialog;                      //memory leak???
+        delete playlistDialog;
         playlistDialog = new PlaylistDialog(this);
         playlistDialog->getPlaylist(playlist);
+        playlistDialog->getCurrentIndex(CurrentIndex);
         playlistDialog->show();
+        connect(playlistDialog, &PlaylistDialog::finished, this, &MusicPlayer::cleanupPlaylistDialog);
+    }
+}
+
+void MusicPlayer::handleStateChanged(){
+    //std::cout << Player->mediaStatus() << std::endl;
+    switch(Player->mediaStatus()) {
+    case QMediaPlayer::NoMedia:
+
+    case QMediaPlayer::LoadedMedia:
+        emit mediaLoaded();
+        break;
+    case QMediaPlayer::LoadingMedia:
+        //setStatusInfo(tr("Loading..."));
+        break;
+    case QMediaPlayer::BufferingMedia:
+    case QMediaPlayer::BufferedMedia:
+        //setStatusInfo(tr("Buffering %1%").arg(qRound(player->bufferProgress() * 100.)));
+        break;
+    case QMediaPlayer::StalledMedia:
+        //setStatusInfo(tr("Stalled %1%").arg(qRound(player->bufferProgress() * 100.)));
+        break;
+    case QMediaPlayer::EndOfMedia:
+        //QApplication::alert(this);
+        //playlist->next();
+        break;
+    case QMediaPlayer::InvalidMedia:
+        //displayErrorMessage();
+        break;
     }
 }
 
 void MusicPlayer::metaDataChanged(){
-    if (Player->mediaStatus() == QMediaPlayer::LoadedMedia || Player->mediaStatus() == QMediaPlayer::PlayingState) {
+
         auto data = Player->metaData();
         QString Title = data.stringValue(data.Title);
         QString Artist = data.stringValue(data.AlbumArtist);
 
-        if (Title == ""){                           //fix!
+        if (Title.trimmed().isEmpty()){
             titleLabel->setText("Unknown Title");
         } else{
             titleLabel->setText(Title);
         }
 
-        if (Artist == ""){
+        if (Artist.trimmed().isEmpty()){
             authorLabel->setText("Unknown Artist");
         } else{
             authorLabel->setText(Artist);
         }
-
-    }
-    else{
-        titleLabel->setText("Title not loaded");
-        authorLabel->setText("Artist not loaded");
-    }
-};
-
-void MusicPlayer::tracksChanged(){
 
 };
 
@@ -261,6 +380,10 @@ void MusicPlayer::handleCurrentIndexChanged(){
     else if(Player->mediaStatus() == QMediaPlayer::PausedState || Player->mediaStatus() == QMediaPlayer::StoppedState){
         Player->stop();
     }
+
+    if (playlistDialog){
+        playlistDialog->getCurrentIndex(CurrentIndex);
+    }
 }
 
 void MusicPlayer::seek(int position){
@@ -270,39 +393,7 @@ void MusicPlayer::seek(int position){
     Player->setPosition(newPosition);
 };
 
-
-
-void MusicPlayer::statusChanged(QMediaPlayer::MediaStatus status){
-}
-/*
-    handleCursor(status);
-    // handle status message
-    switch (status) {
-    case QMediaPlayer::NoMedia:
-    case QMediaPlayer::LoadedMedia:
-        setStatusInfo(QString());
-        break;
-    case QMediaPlayer::LoadingMedia:
-        setStatusInfo(tr("Loading..."));
-        break;
-    case QMediaPlayer::BufferingMedia:
-    case QMediaPlayer::BufferedMedia:
-        setStatusInfo(tr("Buffering %1%").arg(qRound(player->bufferProgress() * 100.)));
-        break;
-    case QMediaPlayer::StalledMedia:
-        setStatusInfo(tr("Stalled %1%").arg(qRound(player->bufferProgress() * 100.)));
-        break;
-    case QMediaPlayer::EndOfMedia:
-        QApplication::alert(this);
-        //playlist->next();
-        break;
-    case QMediaPlayer::InvalidMedia:
-        displayErrorMessage();
-        break;
-    }
-};
-
-void Player::handleCursor(QMediaPlayer::MediaStatus status) {
+void MusicPlayer::handleCursor(QMediaPlayer::MediaStatus status) {
 #ifndef QT_NO_CURSOR
     if (status == QMediaPlayer::LoadingMedia || status == QMediaPlayer::BufferingMedia
         || status == QMediaPlayer::StalledMedia)
@@ -311,6 +402,7 @@ void Player::handleCursor(QMediaPlayer::MediaStatus status) {
         unsetCursor();
 #endif
 }
+/*
 
 void Player::setStatusInfo(const QString &info)
 {
