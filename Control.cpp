@@ -2,6 +2,9 @@
 
 Controls::Controls(QWidget *parent) : QWidget(parent)
 {
+    openButton = new QPushButton(tr("Add"), this);
+    connect(openButton, &QPushButton::clicked, this, &Controls::openClicked);
+
     Play = new QToolButton(this);
     Play->setIcon(style()->standardIcon(QStyle::SP_MediaPlay));
     connect(Play, &QAbstractButton::clicked, this, &Controls::playClicked);
@@ -23,6 +26,11 @@ Controls::Controls(QWidget *parent) : QWidget(parent)
     Mute->setIcon(style()->standardIcon(QStyle::SP_MediaVolume));
     connect(Mute, &QAbstractButton::clicked, this, &Controls::muteClicked);
 
+    Shuffle = new QPushButton(this);
+    Shuffle->setText("Shuffle");
+    Shuffle->setCheckable(true);
+    connect(Shuffle, &QPushButton::clicked, this, &Controls::ShuffleClicked);
+
     volumeSlider = new QSlider(Qt::Horizontal, this);
     volumeSlider->setRange(0, 100);
     QSizePolicy sp = volumeSlider->sizePolicy();
@@ -39,10 +47,12 @@ Controls::Controls(QWidget *parent) : QWidget(parent)
 
     QBoxLayout *layout = new QHBoxLayout;
     layout->setContentsMargins(0, 0, 0, 0);
+    layout->addWidget(openButton);
     layout->addWidget(Stop);
     layout->addWidget(Previous);
     layout->addWidget(Play);
     layout->addWidget(Next);
+    layout->addWidget(Shuffle);
     layout->addWidget(Mute);
     layout->addWidget(volumeSlider);
     layout->addWidget(rateBox);
@@ -77,6 +87,10 @@ void Controls::setState(QMediaPlayer::PlaybackState state)
     }
 }
 
+void Controls::openClicked(){
+    emit opened();
+}
+
 float Controls::volume() const
 {
     qreal linearVolume =
@@ -108,6 +122,12 @@ void Controls::setMuted(bool muted)
                                                           : QStyle::SP_MediaVolume));
     }
 }
+
+void Controls::ShuffleClicked(bool shuffled){
+        IsShuffled = shuffled;
+        emit shuffle(IsShuffled);
+}
+
 
 void Controls::playClicked()
 {

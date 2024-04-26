@@ -16,6 +16,7 @@
 #include <QDropEvent>
 #include <QMimeData>
 #include <QMessageBox>
+#include <random>
 
 #include "Playlist.h"
 #include "Control.h"
@@ -29,30 +30,26 @@ class MusicPlayer : public QWidget
     QVBoxLayout * trackLayout;
     QHBoxLayout * durationLayout;
 
-    QMediaPlayer * Player;
-    QAudioOutput * audioOutput;
+    QMediaPlayer * Player = nullptr;
+    QAudioOutput * audioOutput = nullptr;
 
     QList<QPair<QUrl, int>> * playlist = nullptr;
-    int * CurrentIndex;
+    int * CurrentIndex = nullptr;
     QPushButton * ViewPlaylist;
-    QPushButton * openButton;
-    QPushButton * deleteButton;
-    QListWidget * playlistWidget;
 
-    PlaylistDialog * playlistDialog;
+    PlaylistDialog * playlistDialog = nullptr;
     void handleViewPlaylist();
     void handlePlaylistUpdated();
-    //void handleItemMoved(QDropEvent *event);
-    //void dropEvent(QDropEvent *event) override;
 
     QSlider * slider;
     QLabel * duration;
     QLabel * titleLabel;
     QLabel * authorLabel;
 
-    Controls * PlayerControl;
+    Controls * PlayerControl = nullptr;
 
     bool isPlayerAvailable() const;
+    bool * Shuffle;
 
     void open();
     void deleteSong();
@@ -63,6 +60,9 @@ class MusicPlayer : public QWidget
     void handleCurrentIndexChanged();
     void updatePlaylist();
     void cleanupPlaylistDialog();
+    void handleShuffle(bool IsShuffled);
+    void handleItemDeleted(int index);
+    void setStatus(QString const & status);
 
     qint64 c_duration;
     void handleStateChanged();
@@ -81,11 +81,11 @@ class MusicPlayer : public QWidget
 
     void selectAudioStream();
     void selectSubtitleStream();
-    void displayErrorMessage();
+    void displayErrorMessage(QMediaPlayer::Error error, const QString & errorString);
     void audioOutputChanged(int);
 
     void handleDelete(QList<QListWidgetItem *> selectedItems);
-
+public:
 signals:
     void CurrentIndexChanged();
     void FirstSongAdded();
@@ -93,6 +93,7 @@ signals:
     void mediaLoaded();
     void PlaylistChanged();
     void deleteItemsSelected(QList<QListWidgetItem *> selectedItems);
+    void ClickNext();
 
 public:
     MusicPlayer(QWidget *parent = nullptr);

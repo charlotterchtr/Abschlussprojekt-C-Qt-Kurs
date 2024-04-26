@@ -25,12 +25,14 @@ class Controls : public QWidget
 
 private:
 
+    QAbstractButton * openButton = nullptr;
     QAbstractButton * Play = nullptr;
     QAbstractButton * Stop = nullptr;
     QAbstractButton * Next = nullptr;
     QAbstractButton * Previous = nullptr;
     QAbstractButton * Mute = nullptr;
     QAbstractSlider * volumeSlider = nullptr;
+    QPushButton * Shuffle = nullptr;
 
     QMediaPlayer::PlaybackState playerState = QMediaPlayer::StoppedState;
     bool playerMuted = false;
@@ -39,9 +41,8 @@ private:
 
 public:
     Controls(QWidget *parent = nullptr);
-
     QMediaPlayer::PlaybackState state() const;
-
+    bool IsShuffled = false;
     float volume() const;
     bool isMuted() const;
     qreal playbackRate() const;
@@ -58,13 +59,17 @@ signals:
     void stop();
     void next();
     void previous();
+    void opened();
+    void shuffle(bool IsShuffled);
     void changeVolume(float volume);
     void changeMuting(bool muting);
     void changeRate(qreal rate);
 
 private slots:
     void playClicked();
+    void openClicked();
     void muteClicked();
+    void ShuffleClicked(bool shuffled);
     void updateRate();
     void onVolumeSliderValueChanged();
 

@@ -11,6 +11,7 @@
 #include <iostream>
 #include <QMenu>
 #include <QAction>
+#include <QApplication>
 
 class PlaylistDialog : public QDialog
 {
@@ -18,26 +19,28 @@ class PlaylistDialog : public QDialog
 
 public:
     PlaylistDialog(QWidget * parent = nullptr);
-    QListWidget * playlistWidget;
+    QListWidget * playlistWidget = nullptr;
     QList<QPair<QUrl, int>>* playlist = nullptr;
-    int* CurrentIndex;
+    int* CurrentIndex = nullptr;
 
     void getPlaylist(QList<QPair<QUrl, int>> * orig_playlist);
     void handleCurrentIndexChanged();
     void handleShowPlaylist();
     void getCurrentIndex(int * i);
     void highlightCurrentIndex();
+    void deleteSelectedItem();
 
 
-    void handleItemMoved(QDropEvent * event);
-    void dropEvent(QDropEvent * event) override;
-    void mousePressEvent(QMouseEvent *event) override;
-    void createContextMenu(QMouseEvent *event);
+    //void handleItemMoved(QDropEvent * event);
+    //void dropEvent(QDropEvent * event) override;
+    //void mousePressEvent(QMouseEvent *event) override;
+    //void createContextMenu(QMouseEvent *event);
 
 signals:
     void show_playlist();
     void CurrentIndexChanged();
     void createMenu(QMouseEvent *event);
+    void ItemDeleted(int index);
 
 private:
     QVBoxLayout * layout;
