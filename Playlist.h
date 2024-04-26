@@ -5,8 +5,6 @@
 #include <QListWidget>
 #include <QVBoxLayout>
 #include <QUrl>
-#include <QDropEvent>
-#include <QMimeData>
 #include <QPalette>
 #include <iostream>
 #include <QMenu>
@@ -29,12 +27,6 @@ public:
     void getCurrentIndex(int * i);
     void highlightCurrentIndex();
     void deleteSelectedItem();
-
-
-    //void handleItemMoved(QDropEvent * event);
-    //void dropEvent(QDropEvent * event) override;
-    //void mousePressEvent(QMouseEvent *event) override;
-    //void createContextMenu(QMouseEvent *event);
 
 signals:
     void show_playlist();

@@ -13,6 +13,7 @@ MusicPlayer::MusicPlayer(QWidget *parent)
     playlist = new  QList<QPair<QUrl, int>>;
     CurrentIndex = new int;
     *CurrentIndex = 0;
+    status = new QMediaPlayer::PlaybackState;
 
     audioOutput = new QAudioOutput;
     Player->setAudioOutput(audioOutput);
@@ -97,8 +98,9 @@ MusicPlayer::~MusicPlayer() {}
 void MusicPlayer::startPlayer(){
     if (!playlist->isEmpty()) {
         Player->setSource(playlist->at(0).first);
-        *CurrentIndex = playlist->at(0).second;
-        emit CurrentIndexChanged();
+        * CurrentIndex = playlist->at(0).second;
+        * status = QMediaPlayer::StoppedState;
+        emit CurrentIndexChanged(status);
     }
 }
 
@@ -159,7 +161,7 @@ void MusicPlayer::updateDurationInfo(qint64 currentInfo)
         tStr = currentTime.toString(format) + " / " + totalTime.toString(format);
     }
     duration->setText(tStr);
-};
+}
 
 void MusicPlayer::handleViewPlaylist(){
     if (!playlistDialog){
@@ -206,24 +208,28 @@ void MusicPlayer::handleItemDeleted(int index){
             if(*Shuffle == false){
                 if(*CurrentIndex < (playlist->size() -1)) {
                     (*CurrentIndex)++;
+                    * status = Player->playbackState();
                     Player->setSource(playlist->at(*CurrentIndex).first);
-                    emit CurrentIndexChanged();
+                    emit CurrentIndexChanged(status);
                 }
                 else{
                     *CurrentIndex = 0;
+                    * status = Player->playbackState();
                     Player->setSource(playlist->at(*CurrentIndex).first);
-                    emit CurrentIndexChanged();
+                    emit CurrentIndexChanged(status);
                 }
             } else {
                 int length = playlist->length();
                 int x = rand() % length;
                 *CurrentIndex = x;
+                * status = Player->playbackState();
                 Player->setSource(playlist->at(*CurrentIndex).first);
-                emit CurrentIndexChanged();
+                emit CurrentIndexChanged(status);
             }
         } else if (*CurrentIndex > 0 && index <= (*CurrentIndex)) {   //Check!
             (*CurrentIndex)--;
-            emit CurrentIndexChanged();
+            * status = Player->playbackState();
+            emit CurrentIndexChanged(status);
         }
     }
     else{               //Empty Playlist
@@ -240,7 +246,7 @@ void MusicPlayer::setStatus(QString const & status){
 
 void MusicPlayer::displayErrorMessage(QMediaPlayer::Error error, const QString & errorString){
     QWidget::setWindowTitle("Music Player || Error: " + errorString);
-};
+}
 
 
 void MusicPlayer::handleStateChanged(){
@@ -248,6 +254,7 @@ void MusicPlayer::handleStateChanged(){
     switch(Player->mediaStatus()) {
     case QMediaPlayer::NoMedia:
         setStatus("No Media");
+        break;
     case QMediaPlayer::LoadedMedia:
         emit mediaLoaded();
         setStatus("Media Loaded");
@@ -257,12 +264,12 @@ void MusicPlayer::handleStateChanged(){
         break;
     case QMediaPlayer::BufferingMedia:
         setStatus("Buffering...");
+        break;
     case QMediaPlayer::BufferedMedia:
         setStatus("Media Buffered");
         break;
     case QMediaPlayer::StalledMedia:
         setStatus("Stalled Media");
-        //setStatusInfo(tr("Stalled %1%").arg(qRound(player->bufferProgress() * 100.)));
         break;
     case QMediaPlayer::EndOfMedia:
         setStatus("End of Media");
@@ -299,20 +306,23 @@ void MusicPlayer::nextClicked(){
         if(*Shuffle == false){
             if(*CurrentIndex < (playlist->size() -1)) {
                 (*CurrentIndex)++;
+                * status = Player->playbackState();
                 Player->setSource(playlist->at(*CurrentIndex).first);
-                emit CurrentIndexChanged();
+                emit CurrentIndexChanged(status);
             }
             else{
                 *CurrentIndex = 0;
+                * status = Player->playbackState();
                 Player->setSource(playlist->at(*CurrentIndex).first);
-                emit CurrentIndexChanged();
+                emit CurrentIndexChanged(status);
             }
         } else {
             int length = playlist->length();
             int x = rand() % length;
             *CurrentIndex = x;
+            * status = Player->playbackState();
             Player->setSource(playlist->at(*CurrentIndex).first);
-            emit CurrentIndexChanged();
+            emit CurrentIndexChanged(status);
         }
     }
 };
@@ -322,20 +332,23 @@ void MusicPlayer::previousClicked(){
         if (*Shuffle == false){
             if(*CurrentIndex > 0) {
                 (*CurrentIndex)--;
+                * status = Player->playbackState();
                 Player->setSource(playlist->at(*CurrentIndex).first);
-                emit CurrentIndexChanged();
+                emit CurrentIndexChanged(status);
             }
             else{
                 *CurrentIndex = (playlist->size() -1);
+                * status = Player->playbackState();
                 Player->setSource(playlist->at(*CurrentIndex).first);
-                emit CurrentIndexChanged();
+                emit CurrentIndexChanged(status);
             }
         } else {
             int length = playlist->length();
             int x = rand() % length;
             *CurrentIndex = x;
+            * status = Player->playbackState();
             Player->setSource(playlist->at(*CurrentIndex).first);
-            emit CurrentIndexChanged();
+            emit CurrentIndexChanged(status);
         }
     }
 
@@ -347,11 +360,11 @@ void MusicPlayer::handleShuffle(bool IsShuffled){
     }
 }
 
-void MusicPlayer::handleCurrentIndexChanged(){
-    if(Player->mediaStatus() == QMediaPlayer::PlayingState){
+void MusicPlayer::handleCurrentIndexChanged(QMediaPlayer::PlaybackState * state){
+    if(*state == QMediaPlayer::PlayingState){
         Player->play();
     }
-    else if(Player->mediaStatus() == QMediaPlayer::PausedState || Player->mediaStatus() == QMediaPlayer::StoppedState){
+    else if(*state == QMediaPlayer::PausedState || *state == QMediaPlayer::StoppedState){
         Player->stop();
     }
 

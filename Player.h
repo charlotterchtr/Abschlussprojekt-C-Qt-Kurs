@@ -9,14 +9,9 @@
 #include <QPushButton>
 #include <QGridLayout>
 #include <QFileDialog>
-#include <QStatusBar>
 #include <QLabel>
 #include <QSlider>
 #include <QListWidget>
-#include <QDropEvent>
-#include <QMimeData>
-#include <QMessageBox>
-#include <random>
 
 #include "Playlist.h"
 #include "Control.h"
@@ -32,6 +27,7 @@ class MusicPlayer : public QWidget
 
     QMediaPlayer * Player = nullptr;
     QAudioOutput * audioOutput = nullptr;
+    QMediaPlayer::PlaybackState * status = nullptr;
 
     QList<QPair<QUrl, int>> * playlist = nullptr;
     int * CurrentIndex = nullptr;
@@ -57,7 +53,7 @@ class MusicPlayer : public QWidget
     void playClicked();
     void previousClicked();
     void nextClicked();
-    void handleCurrentIndexChanged();
+    void handleCurrentIndexChanged(QMediaPlayer::PlaybackState * state);
     void updatePlaylist();
     void cleanupPlaylistDialog();
     void handleShuffle(bool IsShuffled);
@@ -72,22 +68,11 @@ class MusicPlayer : public QWidget
     void updateDurationInfo(qint64 currentInfo);
 
     void metaDataChanged();
-    void tracksChanged();
-
-    //void statusChanged(QMediaPlayer::MediaStatus status);
     void handleCursor(QMediaPlayer::MediaStatus status);
-    void setStatusInfo(const QString &info);
-    void bufferingProgress(float progress);
-
-    void selectAudioStream();
-    void selectSubtitleStream();
     void displayErrorMessage(QMediaPlayer::Error error, const QString & errorString);
-    void audioOutputChanged(int);
 
-    void handleDelete(QList<QListWidgetItem *> selectedItems);
-public:
 signals:
-    void CurrentIndexChanged();
+    void CurrentIndexChanged(QMediaPlayer::PlaybackState * state);
     void FirstSongAdded();
     void SongsAdded();
     void mediaLoaded();
