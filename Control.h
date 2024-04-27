@@ -3,8 +3,6 @@
 
 #include <QMediaPlayer>
 #include <QWidget>
-
-
 #include <QAudio>
 #include <QBoxLayout>
 #include <QComboBox>
@@ -33,14 +31,21 @@ private:
     QAbstractButton * Mute = nullptr;
     QAbstractSlider * volumeSlider = nullptr;
     QPushButton * Shuffle = nullptr;
+    QComboBox * rateBox = nullptr;
 
     QMediaPlayer::PlaybackState playerState = QMediaPlayer::StoppedState;
     bool playerMuted = false;
 
-    QComboBox * rateBox = nullptr;
+private slots:
+    void playClicked();
+    void openClicked();
+    void muteClicked();
+    void ShuffleClicked(bool shuffled);
+    void updateRate();
+    void onVolumeSliderValueChanged();
 
 public:
-    Controls(QWidget *parent = nullptr);
+    Controls(QWidget * parent = nullptr);
     QMediaPlayer::PlaybackState state() const;
     bool IsShuffled = false;
     float volume() const;
@@ -64,14 +69,6 @@ signals:
     void changeVolume(float volume);
     void changeMuting(bool muting);
     void changeRate(qreal rate);
-
-private slots:
-    void playClicked();
-    void openClicked();
-    void muteClicked();
-    void ShuffleClicked(bool shuffled);
-    void updateRate();
-    void onVolumeSliderValueChanged();
 
 };
 

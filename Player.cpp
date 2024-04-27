@@ -1,6 +1,5 @@
 #include "Player.h"
 
-
 MusicPlayer::MusicPlayer(QWidget *parent)
     : QWidget(parent)
 {
@@ -10,11 +9,10 @@ MusicPlayer::MusicPlayer(QWidget *parent)
     // Player setup
     layout = new QVBoxLayout(this);
     Player = new QMediaPlayer(this);
-    playlist = new  QList<QPair<QUrl, int>>;
+    playlist = new  QList<QUrl>;
     CurrentIndex = new int;
     *CurrentIndex = 0;
     status = new QMediaPlayer::PlaybackState;
-
     audioOutput = new QAudioOutput;
     Player->setAudioOutput(audioOutput);
 
@@ -31,23 +29,23 @@ MusicPlayer::MusicPlayer(QWidget *parent)
     trackLayout->addWidget(authorLabel, 0, Qt::AlignCenter);
 
     // duration slider and label
-    QHBoxLayout * durationLayout = new QHBoxLayout;
+    QHBoxLayout * durationLayout = new QHBoxLayout; //Horizontal time slider
     slider = new QSlider(Qt::Horizontal, this);
     slider->setRange(0, Player->duration());
     connect(slider, &QSlider::sliderMoved, this, &MusicPlayer::seek);
     durationLayout->addWidget(slider);
 
-    duration = new QLabel();
+    duration = new QLabel(this);    //Time display
     duration->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
     durationLayout->addWidget(duration);
 
-    //connect MediaPlayer-signals to Slots
+    //connect Playersignals to slots
     connect(Player, &QMediaPlayer::durationChanged, this, &MusicPlayer::durationChanged);
-    connect(Player, &QMediaPlayer::positionChanged, this, &MusicPlayer::positionChanged);
-    connect(this, &MusicPlayer::FirstSongAdded, this, &MusicPlayer::startPlayer);
+    connect(Player, &QMediaPlayer::positionChanged, this, &MusicPlayer::positionChanged);  
     connect(Player, &QMediaPlayer::mediaStatusChanged, this, &MusicPlayer::handleStateChanged);
     connect(Player, &QMediaPlayer::mediaStatusChanged, this, &MusicPlayer::handleCursor);
     connect(this, &MusicPlayer::mediaLoaded, this, &MusicPlayer::metaDataChanged);
+    connect(this, &MusicPlayer::FirstSongAdded, this, &MusicPlayer::startPlayer);
     connect(Player, &QMediaPlayer::errorOccurred, this, &MusicPlayer::displayErrorMessage);
 
     // add controls and connect
@@ -93,12 +91,10 @@ MusicPlayer::MusicPlayer(QWidget *parent)
     this->setLayout(layout);
 }
 
-MusicPlayer::~MusicPlayer() {}
-
 void MusicPlayer::startPlayer(){
     if (!playlist->isEmpty()) {
-        Player->setSource(playlist->at(0).first);
-        * CurrentIndex = playlist->at(0).second;
+        Player->setSource(playlist->at(0));
+        * CurrentIndex = 0;
         * status = QMediaPlayer::StoppedState;
         emit CurrentIndexChanged(status);
     }
@@ -114,27 +110,27 @@ void MusicPlayer::open(){
     // Select multiple MP3 files
     QStringList fileNames = QFileDialog::getOpenFileNames(nullptr, "Select MP3 Files", "", "MP3 files (*.mp3)");
     int orig_i = playlist->size();
-    int i = playlist->size();
-    // Convert file paths to QUrls and add them to the list
+    // Convert file paths to QUrls and add to playlist
     for(const QString &fileName : fileNames) {
-        playlist->append(qMakePair(QUrl::fromLocalFile(fileName), i));
-        i ++;
+        playlist->append(QUrl::fromLocalFile(fileName));
     }
 
-    if(orig_i == 0){
+    if(orig_i == 0){    //Playlist previously empty
         emit FirstSongAdded();
     }
-    else{
+    else{               //Playlist not empty before
         emit SongsAdded();
     }
 
-};
+}
 
+// slider displaying song progress
 void MusicPlayer::durationChanged(qint64 new_duration){
     c_duration = new_duration / 1000;
     slider->setMaximum(c_duration);
+}
 
-};
+// slider moved by user
 void MusicPlayer::positionChanged(qint64 progress){
     if (!slider->isSliderDown()) {
         qint64 duration = Player->duration();
@@ -144,8 +140,13 @@ void MusicPlayer::positionChanged(qint64 progress){
         }
     }
     updateDurationInfo(progress / 1000);
+}
 
-};
+void MusicPlayer::seek(int position){
+    qint64 newPosition = static_cast<qint64>((position * Player->duration()) / slider->maximum());
+    Player->setPosition(newPosition);
+}
+
 
 void MusicPlayer::updateDurationInfo(qint64 currentInfo)
 {
@@ -163,6 +164,7 @@ void MusicPlayer::updateDurationInfo(qint64 currentInfo)
     duration->setText(tStr);
 }
 
+// PlaylistDialog initialized
 void MusicPlayer::handleViewPlaylist(){
     if (!playlistDialog){
         playlistDialog = new PlaylistDialog(this);
@@ -177,6 +179,7 @@ void MusicPlayer::handleViewPlaylist(){
     }
 }
 
+// reset PlaylistDialog to nullptr after closing
 void MusicPlayer::cleanupPlaylistDialog() {
     if (playlistDialog) {
         delete playlistDialog;
@@ -184,6 +187,7 @@ void MusicPlayer::cleanupPlaylistDialog() {
     }
 }
 
+// update PlaylistDialog if songs added
 void MusicPlayer::handlePlaylistUpdated(){
 
     if (playlistDialog){
@@ -197,42 +201,44 @@ void MusicPlayer::handlePlaylistUpdated(){
     }
 }
 
-
+// delete in Playlist Dialog selected song from playlist
 void MusicPlayer::handleItemDeleted(int index){
 
     playlist->removeAt(index);
 
     // Update the current index if needed
     if (!playlist->isEmpty()) {
-        if (index == (*CurrentIndex)) {
+        if (index == (*CurrentIndex)) { //if current song deleted:
             if(*Shuffle == false){
+                // next song in playlist is played
                 if(*CurrentIndex < (playlist->size() -1)) {
                     (*CurrentIndex)++;
-                    * status = Player->playbackState();
-                    Player->setSource(playlist->at(*CurrentIndex).first);
+                    *status = Player->playbackState();
+                    Player->setSource(playlist->at(*CurrentIndex));
                     emit CurrentIndexChanged(status);
                 }
                 else{
                     *CurrentIndex = 0;
-                    * status = Player->playbackState();
-                    Player->setSource(playlist->at(*CurrentIndex).first);
+                    *status = Player->playbackState();
+                    Player->setSource(playlist->at(*CurrentIndex));
                     emit CurrentIndexChanged(status);
                 }
-            } else {
+            }   // random next song is played
+            else {
                 int length = playlist->length();
                 int x = rand() % length;
                 *CurrentIndex = x;
-                * status = Player->playbackState();
-                Player->setSource(playlist->at(*CurrentIndex).first);
+                *status = Player->playbackState();
+                Player->setSource(playlist->at(*CurrentIndex));
                 emit CurrentIndexChanged(status);
             }
-        } else if (*CurrentIndex > 0 && index <= (*CurrentIndex)) {   //Check!
+        } else if (*CurrentIndex > 0 && index <= (*CurrentIndex)) { // update current index
             (*CurrentIndex)--;
-            * status = Player->playbackState();
+            *status = Player->playbackState();
             emit CurrentIndexChanged(status);
         }
     }
-    else{               //Empty Playlist
+    else{               // if empty playlist after deletion
         Player->stop();
         titleLabel->setText("No Title loaded");
         authorLabel->setText("No Artist loaded");
@@ -240,17 +246,18 @@ void MusicPlayer::handleItemDeleted(int index){
 
 }
 
+// Status info in window title
 void MusicPlayer::setStatus(QString const & status){
     QWidget::setWindowTitle("Music Player || " + status);
 }
 
+// errors display
 void MusicPlayer::displayErrorMessage(QMediaPlayer::Error error, const QString & errorString){
     QWidget::setWindowTitle("Music Player || Error: " + errorString);
 }
 
-
+// track status change to e.g. set meta data and catch end of song
 void MusicPlayer::handleStateChanged(){
-    std::cout << Player->mediaStatus() << std::endl;
     switch(Player->mediaStatus()) {
     case QMediaPlayer::NoMedia:
         setStatus("No Media");
@@ -281,6 +288,7 @@ void MusicPlayer::handleStateChanged(){
     }
 }
 
+// update metadata if song is loaded
 void MusicPlayer::metaDataChanged(){
 
         auto data = Player->metaData();
@@ -299,47 +307,65 @@ void MusicPlayer::metaDataChanged(){
             authorLabel->setText(Artist);
         }
 
-};
+}
 
+// next song in playlist depending on shuffle state
 void MusicPlayer::nextClicked(){
     if (!playlist->isEmpty()) {
         if(*Shuffle == false){
             if(*CurrentIndex < (playlist->size() -1)) {
                 (*CurrentIndex)++;
-                * status = Player->playbackState();
-                Player->setSource(playlist->at(*CurrentIndex).first);
+                // continue playing of song ended (sender=this), if next clicked depending on previous state
+                if(sender() == PlayerControl){
+                    * status = Player->playbackState();
+                }
+                else{
+                    * status = QMediaPlayer::PlayingState;
+                }
+                Player->setSource(playlist->at(*CurrentIndex));
                 emit CurrentIndexChanged(status);
             }
             else{
                 *CurrentIndex = 0;
-                * status = Player->playbackState();
-                Player->setSource(playlist->at(*CurrentIndex).first);
+                if(sender() == PlayerControl){
+                    * status = Player->playbackState();
+                }
+                else{
+                    * status = QMediaPlayer::PlayingState;
+                }
+                Player->setSource(playlist->at(*CurrentIndex));
                 emit CurrentIndexChanged(status);
             }
         } else {
             int length = playlist->length();
             int x = rand() % length;
             *CurrentIndex = x;
-            * status = Player->playbackState();
-            Player->setSource(playlist->at(*CurrentIndex).first);
+            if(sender() == PlayerControl){
+                * status = Player->playbackState();
+            }
+            else{
+                * status = QMediaPlayer::PlayingState;
+            }
+            Player->setSource(playlist->at(*CurrentIndex));
             emit CurrentIndexChanged(status);
         }
     }
-};
+}
 
+// previous song in playlist depending on shuffle state
 void MusicPlayer::previousClicked(){
     if (!playlist->isEmpty()) {
         if (*Shuffle == false){
             if(*CurrentIndex > 0) {
                 (*CurrentIndex)--;
                 * status = Player->playbackState();
-                Player->setSource(playlist->at(*CurrentIndex).first);
+                Player->setSource(playlist->at(*CurrentIndex));
                 emit CurrentIndexChanged(status);
             }
             else{
                 *CurrentIndex = (playlist->size() -1);
-                * status = Player->playbackState();
-                Player->setSource(playlist->at(*CurrentIndex).first);
+                *status = Player->playbackState();
+                Player->setSource(playlist->at(*CurrentIndex));
                 emit CurrentIndexChanged(status);
             }
         } else {
@@ -347,19 +373,21 @@ void MusicPlayer::previousClicked(){
             int x = rand() % length;
             *CurrentIndex = x;
             * status = Player->playbackState();
-            Player->setSource(playlist->at(*CurrentIndex).first);
+            Player->setSource(playlist->at(*CurrentIndex));
             emit CurrentIndexChanged(status);
         }
     }
 
-};
+}
 
+// shuffle state changed
 void MusicPlayer::handleShuffle(bool IsShuffled){
     if (!playlist->isEmpty()) {
         *Shuffle = IsShuffled;
     }
 }
 
+// determine whether to play or stop after next/previous clicked
 void MusicPlayer::handleCurrentIndexChanged(QMediaPlayer::PlaybackState * state){
     if(*state == QMediaPlayer::PlayingState){
         Player->play();
@@ -373,13 +401,7 @@ void MusicPlayer::handleCurrentIndexChanged(QMediaPlayer::PlaybackState * state)
     }
 }
 
-void MusicPlayer::seek(int position){
-    // Calculate the position in milliseconds based on the slider's value
-    qint64 newPosition = static_cast<qint64>((position * Player->duration()) / slider->maximum());
-    // Set the position of the media player
-    Player->setPosition(newPosition);
-};
-
+// busy cursor if media still loading
 void MusicPlayer::handleCursor(QMediaPlayer::MediaStatus status) {
 
 #ifndef QT_NO_CURSOR
@@ -390,4 +412,22 @@ void MusicPlayer::handleCursor(QMediaPlayer::MediaStatus status) {
         unsetCursor();
 #endif
 
-};
+}
+
+//Deconstructor
+MusicPlayer::~MusicPlayer() {
+
+    //delete everything that is not a child of MusicPlayer
+
+    delete CurrentIndex;
+    delete Shuffle;
+
+    delete trackLayout;
+    delete controlLayout;
+    delete durationLayout;
+    delete PlayerControl;
+
+    playlist->clear();
+    delete playlist;
+
+}

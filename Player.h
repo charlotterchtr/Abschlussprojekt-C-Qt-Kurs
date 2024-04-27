@@ -3,7 +3,6 @@
 
 #include <QWidget>
 #include <QMediaPlayer>
-#include <iostream>
 #include <QAudioOutput>
 #include <QMediaMetaData>
 #include <QPushButton>
@@ -20,54 +19,56 @@ class MusicPlayer : public QWidget
 {
     Q_OBJECT
 
-    QVBoxLayout * layout;
-    QBoxLayout * controlLayout;
-    QVBoxLayout * trackLayout;
-    QHBoxLayout * durationLayout;
+    //Layouts
+    QVBoxLayout * layout = nullptr;
+    QBoxLayout * controlLayout = nullptr;
+    QVBoxLayout * trackLayout = nullptr;
+    QHBoxLayout * durationLayout = nullptr;
 
+    //Player
     QMediaPlayer * Player = nullptr;
     QAudioOutput * audioOutput = nullptr;
     QMediaPlayer::PlaybackState * status = nullptr;
-
-    QList<QPair<QUrl, int>> * playlist = nullptr;
     int * CurrentIndex = nullptr;
-    QPushButton * ViewPlaylist;
 
+    //Playlist
+    QList<QUrl> * playlist = nullptr;
+    QPushButton * ViewPlaylist = nullptr;
     PlaylistDialog * playlistDialog = nullptr;
-    void handleViewPlaylist();
-    void handlePlaylistUpdated();
 
-    QSlider * slider;
-    QLabel * duration;
-    QLabel * titleLabel;
-    QLabel * authorLabel;
-
+    //Controls and Labels
+    QSlider * slider = nullptr;
+    QLabel * duration = nullptr;
+    QLabel * titleLabel = nullptr;
+    QLabel * authorLabel = nullptr;
     Controls * PlayerControl = nullptr;
 
     bool isPlayerAvailable() const;
-    bool * Shuffle;
+    bool * Shuffle = nullptr;
+    qint64 c_duration;
 
+private slots:
     void open();
-    void deleteSong();
     void startPlayer();
     void playClicked();
     void previousClicked();
     void nextClicked();
-    void handleCurrentIndexChanged(QMediaPlayer::PlaybackState * state);
-    void updatePlaylist();
-    void cleanupPlaylistDialog();
+    void metaDataChanged();
     void handleShuffle(bool IsShuffled);
+    void handleCurrentIndexChanged(QMediaPlayer::PlaybackState * state);
     void handleItemDeleted(int index);
-    void setStatus(QString const & status);
 
-    qint64 c_duration;
+    void handleViewPlaylist();
+    void handlePlaylistUpdated();
+    void cleanupPlaylistDialog();
+
+    void setStatus(QString const & status);
     void handleStateChanged();
     void durationChanged(qint64 duration);
     void positionChanged(qint64 progress);
     void seek(int mseconds);
     void updateDurationInfo(qint64 currentInfo);
 
-    void metaDataChanged();
     void handleCursor(QMediaPlayer::MediaStatus status);
     void displayErrorMessage(QMediaPlayer::Error error, const QString & errorString);
 
@@ -81,7 +82,7 @@ signals:
     void ClickNext();
 
 public:
-    MusicPlayer(QWidget *parent = nullptr);
+    MusicPlayer(QWidget * parent = nullptr);
     ~MusicPlayer();
 };
 #endif // PLAYER_H

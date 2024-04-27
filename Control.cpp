@@ -2,6 +2,9 @@
 
 Controls::Controls(QWidget *parent) : QWidget(parent)
 {
+
+    //implement and connect buttons
+
     openButton = new QPushButton(tr("Add"), this);
     connect(openButton, &QPushButton::clicked, this, &Controls::openClicked);
 
@@ -45,7 +48,10 @@ Controls::Controls(QWidget *parent) : QWidget(parent)
     rateBox->setCurrentIndex(1);
     connect(rateBox, QOverload<int>::of(&QComboBox::activated), this, &Controls::updateRate);
 
+    // implement layout
+
     QBoxLayout *layout = new QHBoxLayout;
+
     layout->setContentsMargins(0, 0, 0, 0);
     layout->addWidget(openButton);
     layout->addWidget(Stop);
@@ -65,6 +71,7 @@ QMediaPlayer::PlaybackState Controls::state() const
     return playerState;
 }
 
+//set Icons depending on PlaybackState
 void Controls::setState(QMediaPlayer::PlaybackState state)
 {
     if (state != playerState) {
@@ -127,7 +134,6 @@ void Controls::ShuffleClicked(bool shuffled){
         IsShuffled = shuffled;
         emit shuffle(IsShuffled);
 }
-
 
 void Controls::playClicked()
 {
